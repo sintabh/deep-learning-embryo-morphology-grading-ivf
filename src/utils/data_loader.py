@@ -3,7 +3,7 @@ from typing import Tuple, Dict
 
 from PIL import Image
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import torchvision.transforms as T
 
 from src.config import TRAIN_DIR, VAL_DIR, TEST_DIR
@@ -94,6 +94,7 @@ def create_dataloaders(
     batch_size: int = 32,
     num_workers: int = 4,
     image_size: int = 224,
+    use_weighted_sampler: bool = False,
 ) -> Tuple[DataLoader, DataLoader, DataLoader, Dict[str, int]]:
     train_transform, eval_transform = create_transforms(image_size=image_size)
 
@@ -107,9 +108,37 @@ def create_dataloaders(
         root_dir=TEST_DIR, transform=eval_transform, class_to_idx=class_to_idx
     )
 
-    train_loader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
+    if use_weighted_sampler:
+        # Compute class-balanced sampling weights for training set
+        train_labels = [target for _, target in train_dataset.samples]
+        num_classes = len(class_to_idx)
+
+        label_tensor = torch.tensor(train_labels, dtype=torch.long)
+        class_counts = torch.bincount(label_tensor, minlength=num_classes).float()
+        class_weights = len(train_labels) / (num_classes * class_counts)
+
+        sample_weights = class_weights[label_tensor]
+        sampler = WeightedRandomSampler(
+            weights=sample_weights,
+            num_samples=len(sample_weights),
+            replacement=True,
+        )
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            sampler=sampler,
+            shuffle=False,
+            num_workers=num_workers,
+        )
+    else:
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+        )
+
     val_loader = DataLoader(
         val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )

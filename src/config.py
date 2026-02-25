@@ -1,4 +1,6 @@
 import os
+import torch
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Root directory of the project (change this if the project is moved)
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

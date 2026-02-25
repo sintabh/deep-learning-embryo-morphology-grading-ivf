@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 from src.config import MODELS_DIR
 from src.utils.data_loader import create_dataloaders
 from src.models.cnn_model import create_model
+from src.utils.losses import FocalLoss
 
 
 def train_one_epoch(
@@ -94,18 +95,26 @@ def train_model(
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_loader, val_loader, _, class_to_idx = create_dataloaders(
+        train_loader, val_loader, _, class_to_idx = create_dataloaders(
         batch_size=batch_size,
         num_workers=num_workers,
         image_size=image_size,
+        use_weighted_sampler=True,
     )
 
     num_classes = len(class_to_idx)
 
+    # Compute class weights from training dataset
+    train_labels = [target for _, target in train_loader.dataset.samples]
+    labels_tensor = torch.tensor(train_labels, dtype=torch.long)
+    class_counts = torch.bincount(labels_tensor, minlength=num_classes).float()
+    class_weights = len(train_labels) / (num_classes * class_counts)
+
     model = create_model(model_name=model_name, num_classes=num_classes)
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    # Focal loss with class weights as alpha
+    criterion = FocalLoss(gamma=2.0, alpha=class_weights)
     optimizer = Adam(model.parameters(), lr=learning_rate)
     scheduler = StepLR(optimizer, step_size=step_size, gamma=gamma)
 

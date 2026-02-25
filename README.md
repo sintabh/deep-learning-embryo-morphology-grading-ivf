@@ -1,210 +1,183 @@
-قدم ۲۲: نوشتن یک README اولیه برای ریپو (با عنوان نهایی GitHub)
-
-در این قدم فقط یک کار می‌کنیم:
-✅ **پر کردن فایل `README.md` با توضیح انگلیسی و عنوان نهایی پروژه.**
+# IVF Embryo Morphology Grading – Deep Learning System  
+A complete pipeline for automatic scoring of human blastocysts based on Gardner criteria using deep learning (EfficientNet-B0). The system includes **single-task quality classification**, **multi-task Gardner scoring**, **evaluation metrics**, and **Grad-CAM explainability**.
 
 ---
 
-### ۱) محتوای `README.md` را کامل با این متن جایگزین کن
+## Overview
 
-فایل `README.md` در ریشه پروژه را باز کن و محتوایش را این قرار بده:
+This repository implements two models:
 
-````markdown
-# Deep Learning for Embryo Morphology Grading (IVF Project)
+### 1) Single-task classifier  
+Predicts an aggregated 3-class embryo quality label:
+- low
+- medium
+- high
 
-This repository implements a deep learning pipeline for **embryo morphology grading** in the context of IVF, using convolutional neural networks (CNNs) and Grad-CAM–based explainability.
+Labels are derived from Gardner expansion, ICM, and TE grades.
+
+### 2) Multi-task Gardner model  
+Predicts all three original clinical sub-scores:
+
+| Task | Classes |
+|------|---------|
+| Expansion | 0–4 |
+| ICM | 0–3 |
+| TE | 0–3 |
+
+Both models use EfficientNet-B0 as the backbone.
 
 ---
 
-## 1. Overview
+## Project Structure
 
-The project includes:
-
-- A configurable project structure with a central `config.py` for paths
-- Train/val/test split from a public IVF embryo dataset
-- A CNN classifier (EfficientNet-B0 by default, with optional ResNet50)
-- Training and evaluation scripts (accuracy, loss, confusion matrix)
-- Grad-CAM visualization for model explainability
-- A demo Jupyter notebook for interactive exploration
-
----
-
-## 2. Dataset
-
-The project assumes a public IVF embryo image dataset, downloaded manually into:
-
-```text
-data/raw/
-    archive.zip
-    <unzipped_dataset_folders>/
-````
-
-After running the splitting utility, the processed data structure is:
-
-```text
-data/processed/
-    train/
-        <class_1>/
-        <class_2>/
-        ...
-    val/
-        <class_1>/
-        <class_2>/
-        ...
-    test/
-        <class_1>/
-        <class_2>/
-        ...
 ```
-
-Each `<class_x>` corresponds to an embryo morphology/quality grade.
-
----
-
-## 3. Project Structure
-
-```text
-ivf-embryo-grading/
-├─ data/
-│  ├─ raw/
-│  └─ processed/
-├─ notebooks/
-│  └─ ivf_embryo_grading_demo.ipynb
-├─ reports/
-│  └─ figures/
-│     ├─ accuracy_efficientnet_b0.png
-│     ├─ loss_efficientnet_b0.png
-│     └─ confusion_matrix_efficientnet_b0.png
-├─ src/
-│  ├─ config.py
-│  ├─ models/
-│  │  └─ cnn_model.py
-│  ├─ training/
-│  │  └─ train.py
-│  └─ utils/
-│     ├─ dataset_split.py
-│     ├─ data_loader.py
-│     ├─ plot_history.py
-│     ├─ confusion_matrix.py
-│     └─ grad_cam.py
-├─ README.md
-├─ requirements.txt
-└─ .gitignore
+.
+├── data/
+│   ├── raw/
+│   │   ├── Gardner_train_silver.csv
+│   │   ├── Gardner_test_gold_onlyGardnerScores.csv
+│   │   └── archive.zip
+│   └── processed/
+│       ├── train/
+│       ├── val/
+│       └── test/
+│
+├── notebooks/
+│   └── ivf_embryo_grading_demo.ipynb
+│
+├── reports/
+│   └── figures/
+│       ├── confusion_matrix_efficientnet_b0.png
+│       ├── confusion_multitask_expansion.png
+│       ├── confusion_multitask_icm.png
+│       ├── confusion_multitask_te.png
+│       ├── gradcam_efficientnet_b0.png
+│       ├── gradcam_multitask_expansion.png
+│       ├── gradcam_multitask_icm.png
+│       └── gradcam_multitask_te.png
+│
+├── src/
+│   ├── config.py
+│   ├── models/
+│   │   ├── cnn_model.py
+│   │   ├── multitask_model.py
+│   │   └── *.pth (saved model weights)
+│   ├── training/
+│   │   ├── train.py
+│   │   └── train_multitask.py
+│   └── utils/
+│       ├── annotation_utils.py
+│       ├── clean_annotations.py
+│       ├── dataset_split.py
+│       ├── data_loader.py
+│       ├── multitask_dataset.py
+│       ├── multitask_data_loader.py
+│       ├── plot_history.py
+│       ├── confusion_matrix.py
+│       ├── multitask_eval.py
+│       ├── grad_cam.py
+│       └── gradcam_multitask_demo.py
+│
+└── requirements.txt
 ```
 
 ---
 
-## 4. Environment and Installation
+## Installation
 
 ```bash
+git clone https://github.com/sintabh/deep-learning-embryo-morphology-grading-ivf.git
+cd deep-learning-embryo-grading-ivf
+
 python -m venv .venv
-source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+# Windows
+.venv\Scripts\activate
+# Linux/Mac:
+# source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
----
-
-## 5. Data Preparation
-
-1. Download the embryo dataset (e.g. public IVF blastocyst dataset).
-2. Place the archive and/or extracted folders under:
-
-```text
+Ensure raw dataset CSVs are placed in:
+```
 data/raw/
 ```
 
-3. Run the dataset split script:
-
+Then preprocess:
 ```bash
 python -m src.utils.dataset_split
+python -m src.utils.clean_annotations
 ```
-
-This will populate `data/processed/train`, `val`, and `test`.
 
 ---
 
-## 6. Training
+## Training
 
-To train the model (EfficientNet-B0 by default) and save the best checkpoint and training history:
+### Single-Task Quality Model (3-class)
 
 ```bash
 python -m src.training.train
 ```
 
 Outputs:
+- src/models/best_efficientnet_b0.pth
+- reports/figures/confusion_matrix_efficientnet_b0.png
+- src/models/training_history_efficientnet_b0.pt
 
-* `src/models/best_efficientnet_b0.pth`
-* `src/models/training_history_efficientnet_b0.pt`
-
----
-
-## 7. Evaluation and Plots
-
-Generate accuracy and loss curves:
-
+Evaluate:
 ```bash
 python -m src.utils.plot_history
-```
-
-Generate a confusion matrix on the test set:
-
-```bash
 python -m src.utils.confusion_matrix
 ```
 
-These figures are saved to `reports/figures/`.
-
----
-
-## 8. Grad-CAM Explainability
-
-A Grad-CAM utility is provided to visualize which regions of the embryo images the model focuses on:
+### Multi-Task Gardner Model
 
 ```bash
-python
->>> from src.utils.grad_cam import generate_gradcam_for_image
->>> image_path = r"path\to\test\image.png"
->>> out_path = generate_gradcam_for_image(image_path, model_name="efficientnet_b0")
->>> print(out_path)
+python -m src.training.train_multitask
 ```
 
-The resulting heatmap overlay is saved under `reports/figures/`.
+Outputs:
+- src/models/best_multitask_efficientnet_b0.pth
+- Confusion matrices for all heads
+- Final test metrics
 
-The demo notebook also includes an interactive Grad-CAM visualization.
-
----
-
-## 9. Demo Notebook
-
-Open the demo notebook:
-
+Evaluate:
 ```bash
-jupyter notebook
-```
-
-Then open:
-
-```text
-notebooks/ivf_embryo_grading_demo.ipynb
-```
-
-The notebook demonstrates:
-
-* Loading a trained model
-* Running inference on a test image
-* Visualizing Grad-CAM over the same image
-
----
-
-## 10. Reproducibility and Configuration
-
-All important paths are centralized in `src/config.py`. If the project is moved, updating `ROOT_DIR` (or leaving it as automatic project root) keeps the rest of the code working without changing hard-coded paths.
-
+python -m src.utils.multitask_eval
 ```
 
 ---
 
-وقتی این متن رو داخل `README.md` گذاشتی و ذخیره کردی، فقط بنویس:  
-**«README نوشته شد، قدم بعد»**
-::contentReference[oaicite:0]{index=0}
+## Performance (Latest)
+
+### Single-task (3-class quality)
+- Val accuracy: ~0.84
+- Balanced learning curve
+
+### Multi-task (EXP/ICM/TE)
+- Test accuracy:
+  - Expansion ≈ 0.73
+  - ICM ≈ 0.63
+  - TE ≈ 0.60
+
+---
+
+## Explainability (Grad-CAM)
+
+### Single-task:
+```bash
+python -m src.utils.grad_cam_demo
 ```
+
+### Multi-task:
+```bash
+python -m src.utils.gradcam_multitask_demo
+```
+
+Saves heatmaps to `reports/figures/`.
+
+---
+
+## Author
+- Sinta B.
+- Deep Learning IVF Embryo Gradi
